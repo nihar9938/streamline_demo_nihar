@@ -30,7 +30,7 @@ def download_html_file(file_path):
     )
 
 if __name__ == "__main__":  # Only run for Streamlit execution
-    st.title("CSV to JSON HTML Generator")
+    st.title("CSV to JSON HTML Generator Demo by Nihar")
 
     uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
 
