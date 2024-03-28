@@ -1,36 +1,25 @@
-import icalendar
-from datetime import datetime
+from O365 import Account, FileSystemTokenBackend
 
-# Get today's date and set start/end time
-today = datetime.today()
-start_time = datetime(today.year, today.month, today.day, 1, 0)
-end_time = datetime(today.year, today.month, today.day, 2, 0)
+# Set up authentication
+credentials = ('your_client_id', 'your_client_secret')
+token_backend = FileSystemTokenBackend(token_path='.', token_filename='o365_token.txt')
+account = Account(credentials, token_backend=token_backend)
 
-# Define event details
-subject = "Meeting Invitation"
-location = "Conference Room"
-description = "Meeting to discuss project progress"
-attendees = ["recipient1@example.com", "recipient2@example.com"]
+if not account.is_authenticated:
+    # Authenticate the account
+    account.authenticate(scopes=['basic', 'calendar_all'])
+    
+# Create a calendar event
+calendar = account.schedule()
+event = calendar.new_event(
+    subject='Meeting Title',
+    location='Meeting Room',
+    start='2024-04-01T10:00:00',
+    end='2024-04-01T12:00:00',
+    attendees=['email1@example.com', 'email2@example.com'],
+    reminder_minutes_before_start=30,
+    busy_status='Busy',
+)
 
-# Create iCalendar object
-cal = Calendar()
-
-# Create event object
-event = Event()
-event.add('SUMMARY', subject)
-event.add('DTSTART', start_time)
-event.add('DTEND', end_time)
-event.add('LOCATION', location)
-event.add('DESCRIPTION', description)
-event.add('ORGANIZER', f"mailto:{your_email}")  # Organizer email
-for attendee in attendees:
-    event.add('ATTENDEE', f"mailto:{attendee}")
-
-# Add event to calendar
-cal.add_component(event)
-
-# Save iCalendar data to file
-with open('meeting.ics', 'wb') as f:
-    f.write(str(cal).encode('utf-8'))
-
-print("Created iCalendar file: meeting.ics")
+# Send the invite
+event.save(send_invites=True)
