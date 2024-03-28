@@ -1,30 +1,36 @@
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from urllib.parse import urlparse, parse_qs
-import time
+import icalendar
+from datetime import datetime
 
-# Define OAuth 2.0 parameters
-client_id = 'Your_Client_ID'
-redirect_uri = 'http://localhost:8080'  # Should match the redirect URI configured in your app
-scope = 'https://graph.microsoft.com/.default'  # Adjust scope based on required permissions
-authorization_url = f'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id={client_id}&redirect_uri={redirect_uri}&response_type=code&scope={scope}'
+# Get today's date and set start/end time
+today = datetime.today()
+start_time = datetime(today.year, today.month, today.day, 1, 0)
+end_time = datetime(today.year, today.month, today.day, 2, 0)
 
-# Configure WebDriver
-browser = webdriver.Chrome()  # Use appropriate WebDriver for your browser
-browser.get(authorization_url)
+# Define event details
+subject = "Meeting Invitation"
+location = "Conference Room"
+description = "Meeting to discuss project progress"
+attendees = ["recipient1@example.com", "recipient2@example.com"]
 
-# Wait for user to log in and authorize the app
-wait = WebDriverWait(browser, 120)
-wait.until(EC.url_contains(redirect_uri))
+# Create iCalendar object
+cal = Calendar()
 
-# Extract authorization code from the redirected URL
-redirected_url = browser.current_url
-parsed_url = urlparse(redirected_url)
-authorization_code = parse_qs(parsed_url.query)['code'][0]
+# Create event object
+event = Event()
+event.add('SUMMARY', subject)
+event.add('DTSTART', start_time)
+event.add('DTEND', end_time)
+event.add('LOCATION', location)
+event.add('DESCRIPTION', description)
+event.add('ORGANIZER', f"mailto:{your_email}")  # Organizer email
+for attendee in attendees:
+    event.add('ATTENDEE', f"mailto:{attendee}")
 
-print(f'Authorization code obtained: {authorization_code}')
+# Add event to calendar
+cal.add_component(event)
 
-# Close the browser
-browser.quit()
+# Save iCalendar data to file
+with open('meeting.ics', 'wb') as f:
+    f.write(str(cal).encode('utf-8'))
+
+print("Created iCalendar file: meeting.ics")
