@@ -1,62 +1,57 @@
+import win32com.client
+from datetime import datetime
+import tkinter as tk
+from tkinter import messagebox
 
+def send_meeting():
+    subject = subject_entry.get()
+    start_time = datetime.strptime(start_entry.get(), '%Y-%m-%d %H:%M')
+    duration = int(duration_entry.get())
+    location = location_entry.get()
+    recipient_email = email_entry.get()
 
+    outlook = win32com.client.Dispatch("Outlook.Application")
+    meeting = outlook.CreateItem(1)  # 1 represents a calendar appointment (meeting)
 
-credentials = ('your_client_id', 'your_client_secret')
-token_backend = FileSystemTokenBackend(token_path='.', token_filename='o365_token.txt')
-account = Account(credentials, token_backend=token_backend)
+    meeting.Subject = subject
+    meeting.Start = start_time
+    meeting.Duration = duration
+    meeting.Location = location
 
-if not account.is_authenticated:
-    # Authenticate the account
-    account.authenticate(scopes=['basic', 'calendar_all'])
-    
-# Create a calendar event
-calendar = account.schedule()
-event = calendar.new_event(
-    subject='Meeting Title',
-    location='Meeting Room',
-    start='2024-04-01T10:00:00',
-    end='2024-04-01T12:00:00',
-    attendees=['email1@example.com', 'email2@example.com'],
-    reminder_minutes_before_start=30,
-    busy_status='Busy',
-)
+    meeting.Recipients.Add(recipient_email)
+    meeting.Recipients.ResolveAll()
 
-# Send the invite
-event.save(send_invites=True)
+    meeting.Send()
 
+    messagebox.showinfo("Success", "Meeting invitation sent successfully!")
 
-import requests
+# Create GUI
+root = tk.Tk()
+root.title("Outlook Meeting Invitation")
 
-# OAuth 2.0 parameters
-client_id = 'Your_Client_ID'
-client_secret = 'Your_Client_Secret'
-redirect_uri = 'Your_Redirect_URI'
-scope = 'https://graph.microsoft.com/.default'  # Adjust scope based on required permissions
+# Labels and Entries
+tk.Label(root, text="Subject:").pack()
+subject_entry = tk.Entry(root)
+subject_entry.pack()
 
-# Authorization endpoint URL
-authorization_url = f'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id={client_id}&redirect_uri={redirect_uri}&response_type=code&scope={scope}'
+tk.Label(root, text="Start Time (YYYY-MM-DD HH:MM):").pack()
+start_entry = tk.Entry(root)
+start_entry.pack()
 
-# Redirect the user to the authorization URL
-print('Please log in and authorize access by visiting the following URL:')
-print(authorization_url)
+tk.Label(root, text="Duration (minutes):").pack()
+duration_entry = tk.Entry(root)
+duration_entry.pack()
 
-# After authorization, get the authorization code from the redirected URI
-authorization_code = input('Enter the authorization code from the redirect URI: ')
+tk.Label(root, text="Location:").pack()
+location_entry = tk.Entry(root)
+location_entry.pack()
 
-# Exchange authorization code for access token
-token_url = 'https://login.microsoftonline.com/common/oauth2/v2.0/token'
-token_data = {
-    'grant_type': 'authorization_code',
-    'client_id': client_id,
-    'client_secret': client_secret,
-    'redirect_uri': redirect_uri,
-    'code': authorization_code,
-    'scope': scope
-}
-token_response = requests.post(token_url, data=token_data)
+tk.Label(root, text="Recipient Email:").pack()
+email_entry = tk.Entry(root)
+email_entry.pack()
 
-if token_response.status_code == 200:
-    access_token = token_response.json()['access_token']
-    print(f'Access token obtained successfully: {access_token}')
-else:
-    print(f'Error getting access token: {token_response.status_code} - {token_response.text}')
+# Send Button
+send_button = tk.Button(root, text="Send Meeting Invitation", command=send_meeting)
+send_button.pack()
+
+root.mainloop()
