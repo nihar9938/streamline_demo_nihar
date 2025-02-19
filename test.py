@@ -1,43 +1,28 @@
-import streamlit as st
-import pandas as pd
-import json
+import re
+from datetime import datetime
 
-def csv_to_json_html(csv_file):
-    """Reads a CSV file, converts it to JSON, and creates an HTML file with the JSON data."""
+# ... other code ...
 
-    df = pd.read_csv(csv_file)
-    json_data = df.to_json(orient="records")
+if self.fields:
+    # ... other code ...
 
-    with open("data.html", "w") as f:
-        f.write("<h1>CSV Data as JSON</h1>")
-        f.write("<pre>")
-        json.dump(json_data, f, indent=4)
-        f.write("</pre>")
+    if self.fields:
+        start_time_str = self.fields[0].get("clientTimestampStartTime")
+        end_time_str = self.fields[0].get("clientTimestampEndTime")
 
-    return "data.html"
+        if start_time_str or end_time_str:
+            timestamp_regex = {}
 
-def download_html_file(file_path):
-    """Downloads the specified HTML file."""
+            if start_time_str:
+                start_time = datetime.fromisoformat(start_time_str)
+                start_time_str_for_regex = start_time.strftime("%Y-%m-%dT%H:%M:%S")  # Format for regex
+                timestamp_regex["$gte"] = start_time_str_for_regex  # Greater than or equal to string
 
-    with open(file_path, "rb") as f:
-        content = f.read()
+            if end_time_str:
+                end_time = datetime.fromisoformat(end_time_str)
+                end_time_str_for_regex = end_time.strftime("%Y-%m-%dT%H:%M:%S")    # Format for regex
+                timestamp_regex["$lte"] = end_time_str_for_regex  # Less than or equal to string
 
-    st.download_button(
-        label="Download JSON as HTML",
-        data=content,
-        file_name=file_path,
-        mime="text/html",
-    )
+            mongo_query["required.clientTimestamp"] = {"$regex": "^" + timestamp_regex["$gte"] + ".*", "$regex": "^" + timestamp_regex["$lte"] + ".*"}
 
-if __name__ == "__main__":  # Only run for Streamlit execution
-    st.title("CSV to JSON HTML Generator Demo by Nihar")
-
-    uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
-
-    if uploaded_file is not None:
-        try:
-            html_file = csv_to_json_html(uploaded_file)
-            st.write(f"Generated HTML file: [{html_file}](data.html)")
-            download_html_file(html_file)  # Add the download button here
-        except Exception as e:
-            st.error(f"Error processing CSV: {e}")
+        # ... other code ...
