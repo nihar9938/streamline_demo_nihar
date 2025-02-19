@@ -11,18 +11,25 @@ if self.fields:
         end_time_str = self.fields[0].get("clientTimestampEndTime")
 
         if start_time_str or end_time_str:
-            timestamp_regex = {}
+            mongo_query["required.clientTimestamp"] = {}  # Initialize for regex
 
             if start_time_str:
                 start_time = datetime.fromisoformat(start_time_str)
-                start_time_str_for_regex = start_time.strftime("%Y-%m-%dT%H:%M:%S")  # Format for regex
-                timestamp_regex["$gte"] = start_time_str_for_regex  # Greater than or equal to string
+                start_time_str_for_regex = start_time.strftime("%Y-%m-%dT%H:%M:%S")
+
+                # Regex for >= start_time (inclusive)
+                mongo_query["required.clientTimestamp"]["$gte"] = start_time_str_for_regex
 
             if end_time_str:
                 end_time = datetime.fromisoformat(end_time_str)
-                end_time_str_for_regex = end_time.strftime("%Y-%m-%dT%H:%M:%S")    # Format for regex
-                timestamp_regex["$lte"] = end_time_str_for_regex  # Less than or equal to string
+                end_time_str_for_regex = end_time.strftime("%Y-%m-%dT%H:%M:%S")
 
-            mongo_query["required.clientTimestamp"] = {"$regex": "^" + timestamp_regex["$gte"] + ".*", "$regex": "^" + timestamp_regex["$lte"] + ".*"}
+                # Regex for <= end_time (inclusive)
+                mongo_query["required.clientTimestamp"]["$lte"] = end_time_str_for_regex
+
+            mongo_query["required.clientTimestamp"] = {
+                "$gte": {"$regex": "^" + mongo_query["required.clientTimestamp"]["$gte"] + ".*"},
+                "$lte": {"$regex": "^" + mongo_query["required.clientTimestamp"]["$lte"] + ".*"}
+            }
 
         # ... other code ...
