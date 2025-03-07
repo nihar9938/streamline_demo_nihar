@@ -53,3 +53,31 @@ print(df)
 
 pip install pyodbc pandas
 pip install sqlalchemy
+
+
+
+
+from sqlalchemy import create_engine
+import pandas as pd
+
+# Database connection details
+DB_HOST = "your_sybase_host"
+DB_PORT = "2638"  # Default Sybase IQ port
+DB_NAME = "your_database"
+DB_USER = "your_username"
+DB_PASSWORD = "your_password"
+
+# Connection string using ODBC driver
+connection_string = f"DRIVER={{Sybase IQ}};HOST={DB_HOST};PORT={DB_PORT};DBN={DB_NAME};UID={DB_USER};PWD={DB_PASSWORD}"
+
+# Create SQLAlchemy engine
+engine = create_engine(f"mssql+pyodbc:///?odbc_connect={connection_string}")
+
+# Define SQL query
+query = "SELECT * FROM your_table LIMIT 10"
+
+# Execute query and load results into Pandas DataFrame
+df = pd.read_sql(query, engine)
+
+# Print the results
+print(df)
