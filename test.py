@@ -1,83 +1,20 @@
-import pyodbc
+from sqlalchemy import create_engine
+import urllib
 import pandas as pd
 
-# Database connection details
-DB_HOST = "your_sybase_host"  # e.g., "192.168.1.100"
-DB_PORT = "2638"  # Default port for Sybase IQ
+DB_HOST = "your_sybase_host" 
+DB_PORT = "5000"              
 DB_NAME = "your_database"
 DB_USER = "your_username"
 DB_PASSWORD = "your_password"
 
-# ODBC Connection String (Using DSN)
-# conn_str = "DSN=your_dsn_name;UID=your_username;PWD=your_password"
+odbc_str = f"DRIVER={{Sybase ASE ODBC Driver}};SERVER={DB_HOST};PORT={DB_PORT};DB={DB_NAME};UID={DB_USER};PWD={DB_PASSWORD}"
+odbc_str_encoded = urllib.parse.quote_plus(odbc_str)  
 
-# ODBC Connection String (Without DSN)
-conn_str = f"DRIVER={{Sybase IQ}};HOST={DB_HOST};PORT={DB_PORT};DBN={DB_NAME};UID={DB_USER};PWD={DB_PASSWORD}"
+engine = create_engine(f"mssql+pyodbc:///?odbc_connect={odbc_str_encoded}")
 
-try:
-    # Connect to Sybase IQ
-    conn = pyodbc.connect(conn_str)
-    cursor = conn.cursor()
-    
-    # Define the SQL query
-    query = "SELECT * FROM your_table LIMIT 10"  # Adjust as needed
-    
-    # Read data into a Pandas DataFrame
-    df = pd.read_sql(query, conn)
-    
-    # Print the result
-    print(df)
+query = "SELECT TOP 10 * FROM your_table"  
 
-except Exception as e:
-    print(f"Error: {e}")
-
-finally:
-    # Close the connection
-    if 'conn' in locals():
-        conn.close()
-
-
-
-
-
-from sqlalchemy import create_engine
-import pandas as pd
-
-engine = create_engine(f"sybase+pyodbc://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?driver=Sybase+IQ")
-
-query = "SELECT * FROM your_table LIMIT 10"
 df = pd.read_sql(query, engine)
 
-print(df)
-
-
-pip install pyodbc pandas
-pip install sqlalchemy
-
-
-
-
-from sqlalchemy import create_engine
-import pandas as pd
-
-# Database connection details
-DB_HOST = "your_sybase_host"
-DB_PORT = "2638"  # Default Sybase IQ port
-DB_NAME = "your_database"
-DB_USER = "your_username"
-DB_PASSWORD = "your_password"
-
-# Connection string using ODBC driver
-connection_string = f"DRIVER={{Sybase IQ}};HOST={DB_HOST};PORT={DB_PORT};DBN={DB_NAME};UID={DB_USER};PWD={DB_PASSWORD}"
-
-# Create SQLAlchemy engine
-engine = create_engine(f"mssql+pyodbc:///?odbc_connect={connection_string}")
-
-# Define SQL query
-query = "SELECT * FROM your_table LIMIT 10"
-
-# Execute query and load results into Pandas DataFrame
-df = pd.read_sql(query, engine)
-
-# Print the results
 print(df)
