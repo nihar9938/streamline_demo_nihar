@@ -1,30 +1,36 @@
 import pyodbc
 
-# Define connection parameters
+# Connection parameters
 conn_str = (
-    "DRIVER={Adaptive Server Enterprise};"
-    "SERVER=your_server;"
-    "PORT=5000;"
-    "DATABASE=your_db;"
-    "UID=your_username;"
-    "PWD=your_password"
+    r'DRIVER={Adaptive Server Enterprise};'
+    r'SERVER=your_server_address;'
+    r'PORT=your_server_port;'
+    r'DATABASE=your_database_name;'
+    r'UID=your_username;'
+    r'PWD=your_password;'
 )
 
-# Establish connection
-conn = pyodbc.connect(conn_str)
-cursor = conn.cursor()
+try:
+    # Establish connection
+    conn = pyodbc.connect(conn_str)
+    cursor = conn.cursor()
 
-# Execute a query
-query = "SELECT * FROM your_table"
-cursor.execute(query)
+    # Execute a query
+    cursor.execute("SELECT * FROM your_table")
 
-# Fetch results
-rows = cursor.fetchall()
+    # Fetch results
+    rows = cursor.fetchall()
 
-# Print results
-for row in rows:
-    print(row)
+    # Print results
+    for row in rows:
+        print(row)
 
-# Close connection
-cursor.close()
-conn.close()
+except pyodbc.Error as ex:
+    print(f"Error connecting to Sybase ASE: {ex}")
+
+finally:
+    # Close connection
+    if cursor:
+        cursor.close()
+    if conn:
+        conn.close()
