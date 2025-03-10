@@ -10,10 +10,13 @@ excel_files = [f for f in os.listdir(folder_path) if f.endswith((".xls", ".xlsx"
 # Create an empty list to store DataFrames
 df_list = []
 
-# Loop through the files and read them
+# Define the columns you need
+columns_to_keep = ["Column1", "Column2"]  # Replace with actual column names
+
+# Loop through the files and read only the required columns
 for file in excel_files:
     file_path = os.path.join(folder_path, file)
-    df = pd.read_excel(file_path)
+    df = pd.read_excel(file_path, usecols=columns_to_keep)
     df_list.append(df)
 
 # Concatenate all DataFrames
