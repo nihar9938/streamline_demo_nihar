@@ -1,14 +1,25 @@
-from datetime import date
+import os
+import pandas as pd
 
-# List of holiday dates (assuming they are in the format YYYY-MM-DD)
-holiday_dates = ['2024-01-01', '2024-05-27', '2024-07-04', '2024-09-02', '2024-11-28', '2024-12-25']
+# Set folder path
+folder_path = "path/to/excel/folder"
 
-def is_holiday(check_date):
-    return str(check_date) in holiday_dates
+# Get all Excel files in the folder
+excel_files = [f for f in os.listdir(folder_path) if f.endswith((".xls", ".xlsx"))]
 
-# Example usage
-date_to_check = date(2024, 7, 4)
-if is_holiday(date_to_check):
-    print(f"{date_to_check} is a holiday.")
-else:
-    print(f"{date_to_check} is not a holiday.")
+# Create an empty list to store DataFrames
+df_list = []
+
+# Loop through the files and read them
+for file in excel_files:
+    file_path = os.path.join(folder_path, file)
+    df = pd.read_excel(file_path)
+    df_list.append(df)
+
+# Concatenate all DataFrames
+merged_df = pd.concat(df_list, ignore_index=True)
+
+# Save to a new Excel file
+merged_df.to_excel(os.path.join(folder_path, "merged_output.xlsx"), index=False)
+
+print("Merging complete! Saved as 'merged_output.xlsx'")
