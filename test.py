@@ -1,20 +1,20 @@
-from sqlalchemy import create_engine
-import urllib
-import pandas as pd
+import pyodbc
 
-DB_HOST = "your_sybase_host" 
-DB_PORT = "5000"              
-DB_NAME = "your_database"
-DB_USER = "your_username"
-DB_PASSWORD = "your_password"
+# Define connection parameters
+conn_str = "DRIVER={Adaptive Server Enterprise};SERVER=your_server;PORT=5000;DATABASE=your_db;UID=username;PWD=password"
 
-odbc_str = f"DRIVER={{Sybase ASE ODBC Driver}};SERVER={DB_HOST};PORT={DB_PORT};DB={DB_NAME};UID={DB_USER};PWD={DB_PASSWORD}"
-odbc_str_encoded = urllib.parse.quote_plus(odbc_str)  
+# Establish connection
+conn = pyodbc.connect(conn_str)
+cursor = conn.cursor()
 
-engine = create_engine(f"mssql+pyodbc:///?odbc_connect={odbc_str_encoded}")
+# Execute a query
+cursor.execute("SELECT * FROM your_table")
+rows = cursor.fetchall()
 
-query = "SELECT TOP 10 * FROM your_table"  
+# Print results
+for row in rows:
+    print(row)
 
-df = pd.read_sql(query, engine)
-
-print(df)
+# Close connection
+cursor.close()
+conn.close()
