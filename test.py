@@ -1,36 +1,23 @@
-import pyodbc
+import requests
 
-# Connection parameters
-conn_str = (
-    r'DRIVER={Adaptive Server Enterprise};'
-    r'SERVER=your_server_address;'
-    r'PORT=your_server_port;'
-    r'DATABASE=your_database_name;'
-    r'UID=your_username;'
-    r'PWD=your_password;'
-)
+def hit_api(url, num_requests=100):
+    success_count = 0
+    failure_count = 0
+    
+    for i in range(num_requests):
+        try:
+            response = requests.get(url)
+            if response.status_code == 200:
+                success_count += 1
+            else:
+                failure_count += 1
+            print(f"Request {i+1}: Status Code - {response.status_code}")
+        except requests.exceptions.RequestException as e:
+            failure_count += 1
+            print(f"Request {i+1}: Failed - {e}")
+    
+    print(f"\nSummary: {success_count} successes, {failure_count} failures")
 
-try:
-    # Establish connection
-    conn = pyodbc.connect(conn_str)
-    cursor = conn.cursor()
-
-    # Execute a query
-    cursor.execute("SELECT * FROM your_table")
-
-    # Fetch results
-    rows = cursor.fetchall()
-
-    # Print results
-    for row in rows:
-        print(row)
-
-except pyodbc.Error as ex:
-    print(f"Error connecting to Sybase ASE: {ex}")
-
-finally:
-    # Close connection
-    if cursor:
-        cursor.close()
-    if conn:
-        conn.close()
+if __name__ == "__main__":
+    api_url = "https://your-api-endpoint.com"  # Replace with the actual API URL
+    hit_api(api_url)
