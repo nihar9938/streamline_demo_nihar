@@ -3,10 +3,17 @@ import subprocess
 import time
 
 def find_mongo_pid():
-    """Find MongoDB process ID (PID)."""
+    """Find MongoDB process ID (PID) using `ps` instead of `pgrep`."""
     try:
-        result = subprocess.run(["pgrep", "mongod"], capture_output=True, text=True)
-        return result.stdout.strip()
+        # Get all running processes and search for 'mongod'
+        result = subprocess.run(["ps", "aux"], capture_output=True, text=True)
+        lines = result.stdout.split("\n")
+        
+        for line in lines:
+            if "mongod" in line and "--config" in line:  # Ensures we target the main MongoDB process
+                parts = line.split()
+                return parts[1]  # PID is the second column
+        
     except subprocess.CalledProcessError:
         return None
 
@@ -17,7 +24,7 @@ def restart_mongo():
     if pid:
         print(f"MongoDB is running with PID {pid}. Stopping...")
         os.system(f"kill -9 {pid}")
-        time.sleep(2)  # Wait for MongoDB to stop
+        time.sleep(2)  # Wait for MongoDB to fully stop
 
     print("Starting MongoDB...")
     os.system("/usr/bin/mongod --config /etc/mongod.conf --fork")  # Change path if needed
