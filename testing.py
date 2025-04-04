@@ -32,3 +32,7 @@ def restart_mongo():
     print("MongoDB restarted successfully.")
 
 restart_mongo()
+
+
+
+https://chatgpt.com/share/67ef8914-f05c-8012-85c0-28e33654b77f
