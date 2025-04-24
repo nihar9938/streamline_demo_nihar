@@ -182,3 +182,22 @@ merged_df = df_main.merge(df_source[['ID', 'New_Column']], on='ID', how='left')
 merged_df.to_excel("path/to/updated_file.xlsx", index=False)
 
 print("Merge complete! Saved as 'updated_file.xlsx'")
+
+
+import pandas as pd
+
+# Load the Excel file
+file_path = "path/to/your_file.xlsx"
+df = pd.read_excel(file_path)
+
+# Specify the two columns
+col1 = "ColumnA"  # Replace with actual column name
+col2 = "ColumnB"  # Replace with actual column name
+
+# Filter rows where either ColumnA or ColumnB is NOT null
+filtered_df = df[df[col1].notna() | df[col2].notna()]
+
+# Save to new Excel file
+filtered_df.to_excel("filtered_either_notnull.xlsx", index=False)
+
+print("Filtered file saved as 'filtered_either_notnull.xlsx'")
