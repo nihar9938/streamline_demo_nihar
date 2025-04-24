@@ -99,3 +99,38 @@ output_file = os.path.join(folder_path, "merged_unique_by_id.xlsx")
 merged_df.to_excel(output_file, index=False)
 
 print("Merge complete! Duplicates removed based on 'ID'. File saved as 'merged_unique_by_id.xlsx'")
+
+
+
+import os
+import pandas as pd
+
+# Set the folder path where your Excel files are stored
+folder_path = "path/to/your/folder"
+
+# Column to remove duplicates on
+dedup_column = "ID"
+
+# List all Excel files in the folder
+excel_files = [f for f in os.listdir(folder_path) if f.endswith(('.xls', '.xlsx'))]
+
+# List to collect data from each file
+df_list = []
+
+# Loop through files and read them
+for file in excel_files:
+    file_path = os.path.join(folder_path, file)
+    df = pd.read_excel(file_path)
+    df_list.append(df)
+
+# Merge all files into one DataFrame
+merged_df = pd.concat(df_list, ignore_index=True)
+
+# Remove duplicates based on the 'ID' column
+merged_df = merged_df.drop_duplicates(subset='ID')
+
+# Save the merged, de-duplicated DataFrame to a new Excel file
+output_file = os.path.join(folder_path, "merged_unique_by_id.xlsx")
+merged_df.to_excel(output_file, index=False)
+
+print(f"Merged Excel saved as: {output_file}")
