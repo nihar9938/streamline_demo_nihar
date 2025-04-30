@@ -184,3 +184,104 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+
+
+
+
+import pandas as pd
+import requests
+import time
+import os
+
+def get_oauth_access_token_sync():
+    client_id = 'your_client_id'  # Replace with your actual client ID
+    client_secret = 'your_client_secret'  # Replace with your actual client secret
+    data = {
+        'grant_type': 'client_credentials'
+    }
+    try:
+        response = requests.post('https://id.web.gs.com/as/token.oauth2', data=data, auth=(client_id, client_secret))
+        response.raise_for_status()
+        json_response = response.json()
+        return json_response['access_token']
+    except requests.exceptions.RequestException as e:
+        print(f"Error getting access token: {e}")
+        return None
+
+def safe_api_call_sync(url, headers, max_retries=5, initial_delay=1):
+    retries = 0
+    while retries < max_retries:
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            if response is not None and response.status_code == 429:
+                delay = initial_delay * (2 ** retries) + (time.time() % 1)  # Exponential backoff with jitter
+                print(f"Rate limit encountered for {url}. Retrying in {delay:.2f} seconds...")
+                time.sleep(delay)
+                retries += 1
+            else:
+                print(f"API error for {url}: {e}")
+                break
+        time.sleep(0.1)
+    print(f"Failed to get response after {max_retries} retries for {url}")
+    return None
+
+def process_batch_sync(access_token, batch_jobs, batch_number, all_results):
+    headers = {"Authorization": f"Bearer {access_token}"}
+    base_url = 'https://automation.gitlab.aws.site.gs.com'
+    print(f"Processing batch {batch_number} with {len(batch_jobs)} entries...")
+    for job in batch_jobs:
+        url = f'{base_url}/api/v4/search?scope=blobs&search="{job.split(\' \')[0]}"'
+        data = safe_api_call_sync(url, headers)
+        if data:
+            ids = [item['project_id'] for item in data]
+            all_results[job] = list(set(ids))
+        else:
+            all_results[job] = []
+        time.sleep(0.1) # Small delay between individual requests
+    print(f"Batch {batch_number} processed.")
+
+def search_project_files_batchwise_sync():
+    access_token = get_oauth_access_token_sync()
+    if not access_token:
+        return
+
+    batch_size = 1500
+    output_dir = 'output_batches_sync'
+    os.makedirs(output_dir, exist_ok=True)
+    all_results = {}
+
+    try:
+        df = pd.read_excel('ETO_jobs.xlsx')
+        all_jobs = df['Autosys_Key'].dropna().tolist()
+        num_batches = (len(all_jobs) + batch_size - 1) // batch_size
+
+        for i in range(num_batches):
+            start_index = i * batch_size
+            end_index = min((i + 1) * batch_size, len(all_jobs))
+            batch_jobs = all_jobs[start_index:end_index]
+            batch_number = i + 1
+
+            process_batch_sync(access_token, batch_jobs, batch_number, all_results)
+
+            df_batch = pd.DataFrame(list(all_results.items()), columns=['Jobs', 'project_ids'])
+            output_filename = os.path.join(output_dir, f'autosys_job_batch_{batch_number}.xlsx')
+            df_batch.to_excel(output_filename, index=False)
+            all_results = {} # Clear results for the next batch
+            print(f"Output for batch {batch_number} saved to '{output_filename}'")
+            time.sleep(2) # Add a delay between processing batches
+
+        print('All batches processed and saved.')
+
+    except FileNotFoundError:
+        print("Error: ETO_jobs.xlsx not found.")
+    except KeyError:
+        print("Error: 'Autosys_Key' column not found in ETO_jobs.xlsx")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+
+if __name__ == "__main__":
+    search_project_files_batchwise_sync()
