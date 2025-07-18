@@ -1,56 +1,71 @@
-import pandas as pd
-import requests
-import asyncio
-import aiohttp  # For potentially more efficient asynchronous HTTP
+import spacy
 
-async def get_oauth_access_token():
-    # ... (same as before)
-
-async def fetch_project_ids(session, base_url, job, headers):
+def extract_keywords(text):
     try:
-        async with session.get(f'{base_url}/api/v4/search?scope=blobs&search="{job.split(\' \')[0]}"', headers=headers) as res:
-            res.raise_for_status()
-            data = await res.json()
-            ids = [i['project_id'] for i in data]
-            return job, list(set(ids))
-    except aiohttp.ClientError as e:
-        print(f"Error fetching for job {job}: {e}")
-        return job, []
+        nlp = spacy.load("en_core_web_sm")
+    except OSError:
+        spacy.cli.download("en_core_web_sm")
+        nlp = spacy.load("en_core_web_sm")
 
-async def search_project_files():
-    access_token = await get_oauth_access_token()
-    if not access_token:
-        return
+    doc = nlp(text)
+    keywords = set()
 
-    headers = {
-        "Authorization": f"Bearer {access_token}"
-    }
-    base_url = 'https://automation.gitlab.aws.site.gs.com'
-    results = {}
+    pos_tags_to_include = ['PROPN', 'NOUN', 'VERB']
 
-    try:
-        df = pd.read_excel('ETO_jobs.xlsx')
-        jobs = df['Autosys_Key'].dropna().tolist()
+    for token in doc:
+        if token.pos_ in pos_tags_to_include and \
+           not token.is_stop and \
+           not token.is_punct and \
+           token.is_alpha and \
+           len(token.text) > 1:
+            if token.lemma_.lower() in ["create", "expose", "support", "host", "load", "translate", "approve", "raise"]:
+                keywords.add(token.lemma_.lower())
+            elif token.pos_ in ['PROPN', 'NOUN']:
+                keywords.add(token.lemma_.lower())
+            if token.is_upper and len(token.text) > 1:
+                keywords.add(token.text)
 
-        async with aiohttp.ClientSession() as session:
-            tasks = [fetch_project_ids(session, base_url, job, headers) for job in jobs]
-            for future in asyncio.as_completed(tasks):
-                job, project_ids = await future
-                results[job] = project_ids
+    for chunk in doc.noun_chunks:
+        chunk_text = chunk.text.lower().strip()
+        if chunk_text not in ["use case", "everyone", "the same", "my service", "this in pure", "the following error",
+                              "our team", "approval rights", "the meantime", "anyone help", "a service", "static tabular data"]:
+            keywords.add(chunk_text)
 
-        df1 = pd.DataFrame(list(results.items()), columns=['Jobs', 'project_ids'])
-        df1.to_excel('Autosys_job.xlsx', index=False)
-        print('Success')
+    for ent in doc.ents:
+        entity_text = ent.text.lower().strip()
+        if ent.label_ in ["ORG", "PRODUCT", "WORK_OF_ART", "NORP"] or entity_text in ["pure", "api", "tmd"]:
+            keywords.add(entity_text)
 
-    except FileNotFoundError:
-        print("Error: ETO_jobs.xlsx not found.")
-    except KeyError:
-        print("Error: 'Autosys_Key' column not found in ETO_jobs.xlsx")
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+    specific_important_terms = [
+        "pure", "api", "tabular data set", "hardcoded data", "service",
+        "dataset", "class mapping", "merge request", "tmd request",
+        "data", "model", "fix", "approval"
+    ]
+    for term in specific_important_terms:
+        keywords.add(term)
 
-async def main():
-    await search_project_files()
+    final_keywords = [kw for kw in keywords if len(kw) > 1 and (kw.isalpha() or ' ' in kw)]
 
-if __name__ == "__main__":
-    asyncio.run(main())
+    return sorted(list(final_keywords))
+
+chat_transcript = """
+1 Wednesday, July 09, 2025 Bhardwaj, Aryan [HCM]
+2 02:18 PM Hey everyone, needed help in a use case. I want to create a tabular data set within my service, populate it with hardcoded data, and then expose an API which returns it. How can I achieve this in PURE?
+4
+5 02:18 PM I have to tried to do the same, and the service does get registered successfully, but when I try to launch it, I get the following error: 'meta::pure::tds::tabularDataSet can't be translated'
+6
+7 Hey Hernandez, Rafael E [Engineering]
+8 04:33 PM We dont support hosting a service to provide static tabular data
+9
+10 Bhardwaj, Aryan [HCM]
+11 05:00 PM Interesting, so for my use case the only option I have is to create a dataset, load my hardcoded data into it, and create a corresponding class:mapping for it in Pure?
+12
+13 Hey-Hernandez, Rafael E [Engineering
+14 06:15 PM Yeah. Or hosted elsewhere.
+15
+16 Saxena, Shobhit [AM]
+17 08:05 PM Could someone assist with approving the following fix? https://gitlab.aws.site.go.com/data-engineering/pure-model/~merge_requests/12974Currently, no one on our team has approval rights. We have raised a TMD request, but in the meantime, can anyone help?
+"""
+
+extracted_keywords = extract_keywords(chat_transcript)
+print(extracted_keywords)
