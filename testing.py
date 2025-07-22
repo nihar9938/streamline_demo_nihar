@@ -1,71 +1,103 @@
 import spacy
+from collections import Counter
+from string import punctuation
 
-def extract_keywords(text):
-    try:
-        nlp = spacy.load("en_core_web_sm")
-    except OSError:
-        spacy.cli.download("en_core_web_sm")
-        nlp = spacy.load("en_core_web_sm")
+# Load the medium-sized English model from spacy
+# This model includes vectors, part-of-speech tagging, and named entity recognition
+try:
+    nlp = spacy.load("en_core_web_md")
+except OSError:
+    print("Model 'en_core_web_md' not found. Please run 'python -m spacy download en_core_web_md'")
+    exit()
 
-    doc = nlp(text)
-    keywords = set()
+def summarize_chat(chat_log, summary_sentences_count=3):
+    """
+    Summarizes a chat conversation and extracts context using spacy.
 
-    pos_tags_to_include = ['PROPN', 'NOUN', 'VERB']
+    Args:
+        chat_log (list): A list of strings, where each string is a chat message.
+        summary_sentences_count (int): The number of sentences to include in the summary.
 
-    for token in doc:
-        if token.pos_ in pos_tags_to_include and \
-           not token.is_stop and \
-           not token.is_punct and \
-           token.is_alpha and \
-           len(token.text) > 1:
-            if token.lemma_.lower() in ["create", "expose", "support", "host", "load", "translate", "approve", "raise"]:
-                keywords.add(token.lemma_.lower())
-            elif token.pos_ in ['PROPN', 'NOUN']:
-                keywords.add(token.lemma_.lower())
-            if token.is_upper and len(token.text) > 1:
-                keywords.add(token.text)
+    Returns:
+        dict: A dictionary containing the 'summary' and 'context'.
+    """
+    if not chat_log:
+        return {"summary": "The chat is empty.", "context": {}}
 
-    for chunk in doc.noun_chunks:
-        chunk_text = chunk.text.lower().strip()
-        if chunk_text not in ["use case", "everyone", "the same", "my service", "this in pure", "the following error",
-                              "our team", "approval rights", "the meantime", "anyone help", "a service", "static tabular data"]:
-            keywords.add(chunk_text)
+    # 1. Combine chat messages and process with spacy
+    full_text = " ".join(chat_log)
+    doc = nlp(full_text)
 
-    for ent in doc.ents:
-        entity_text = ent.text.lower().strip()
-        if ent.label_ in ["ORG", "PRODUCT", "WORK_OF_ART", "NORP"] or entity_text in ["pure", "api", "tmd"]:
-            keywords.add(entity_text)
+    # 2. Word Frequency Calculation (for summarization)
+    # Get all tokens that are not stop words or punctuation
+    keywords = [token.text.lower() for token in doc if not token.is_stop and not token.is_punct]
+    word_freq = Counter(keywords)
+    max_freq = max(word_freq.values(), default=1)
 
-    specific_important_terms = [
-        "pure", "api", "tabular data set", "hardcoded data", "service",
-        "dataset", "class mapping", "merge request", "tmd request",
-        "data", "model", "fix", "approval"
+    # Normalize frequencies
+    norm_freq = {word: freq / max_freq for word, freq in word_freq.items()}
+
+    # 3. Sentence Scoring
+    sentence_scores = {}
+    for sent in doc.sents:
+        # Score a sentence by summing the normalized frequencies of its words
+        score = sum(norm_freq.get(word.text.lower(), 0) for word in sent)
+        sentence_scores[sent] = score
+
+    # 4. Generate Summary
+    # Get the top N sentences with the highest scores
+    sorted_sentences = sorted(sentence_scores.items(), key=lambda x: x[1], reverse=True)
+    top_sentences = [sent.text for sent, score in sorted_sentences[:summary_sentences_count]]
+    summary = " ".join(top_sentences)
+
+    # 5. Extract Context
+    # Named Entity Recognition (People, Organizations, Dates, etc.)
+    entities = {
+        ent.label_: list(set([e.text for e in doc.ents if e.label_ == ent.label_]))
+        for ent in doc.ents
+    }
+
+    # Key Topics (using noun chunks)
+    topics = [chunk.text for chunk in doc.noun_chunks]
+    top_topics = [item for item, count in Counter(topics).most_common(5)]
+
+    context = {
+        "key_entities": entities,
+        "main_topics": top_topics
+    }
+
+    return {"summary": summary, "context": context}
+
+# --- Example Usage ---
+if __name__ == "__main__":
+    # Sample chat conversation
+    sample_chat = [
+        "Alice: Hey Bob, are we still on for the project meeting tomorrow at 10 AM?",
+        "Bob: Hi Alice! Yes, absolutely. I've finished the initial draft for the Q3 report.",
+        "Alice: Great! Did you include the sales figures from the new campaign with Acme Corp?",
+        "Bob: I did. The results are looking very promising. I'll present them tomorrow.",
+        "Charlie: I'll be joining too. I have some updates from the marketing team regarding the 'Project Phoenix' launch.",
+        "Alice: Perfect, Charlie. See you both at the conference room. Don't forget your laptops."
     ]
-    for term in specific_important_terms:
-        keywords.add(term)
 
-    final_keywords = [kw for kw in keywords if len(kw) > 1 and (kw.isalpha() or ' ' in kw)]
+    # Get the summary and context
+    chat_analysis = summarize_chat(sample_chat, summary_sentences_count=3)
 
-    return sorted(list(final_keywords))
+    # Print the results
+    print("💬 CHAT ANALYSIS")
+    print("=" * 20)
 
-chat_transcript = """
-1 Wednesday, July 09, 2025 Bhardwaj, Aryan [HCM]
-2 02:18 PM Hey everyone, needed help in a use case. I want to create a tabular data set within my service, populate it with hardcoded data, and then expose an API which returns it. How can I achieve this in PURE?
-4
-5 02:18 PM I have to tried to do the same, and the service does get registered successfully, but when I try to launch it, I get the following error: 'meta::pure::tds::tabularDataSet can't be translated'
-6
-7 Hey Hernandez, Rafael E [Engineering]
-8 04:33 PM We dont support hosting a service to provide static tabular data
-9
-10 Bhardwaj, Aryan [HCM]
-11 05:00 PM Interesting, so for my use case the only option I have is to create a dataset, load my hardcoded data into it, and create a corresponding class:mapping for it in Pure?
-12
-13 Hey-Hernandez, Rafael E [Engineering
-14 06:15 PM Yeah. Or hosted elsewhere.
-15
-16 Saxena, Shobhit [AM]
-17 08:05 PM Could someone assist with approving the following fix? https://gitlab.aws.site.go.com/data-engineering/pure-model/~merge_requests/12974Currently, no one on our team has approval rights. We have raised a TMD request, but in the meantime, can anyone help?
-"""
+    print("\n## 📝 Summary")
+    print(chat_analysis['summary'])
 
-extracted_keywords = extract_keywords(chat_transcript)
-print(extracted_keywords)
+    print("\n" + "-" * 20 + "\n")
+
+    print("## CONTEXT")
+    print("\n**Key Entities:**")
+    for entity_type, entity_list in chat_analysis['context']['key_entities'].items():
+        print(f"- {entity_type}: {', '.join(entity_list)}")
+
+    print("\n**Main Topics:**")
+    for topic in chat_analysis['context']['main_topics']:
+        print(f"- {topic}")
+
